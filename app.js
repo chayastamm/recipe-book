@@ -567,7 +567,45 @@ async function downloadPdf() {
   }
 }
 
+/* ---------------- import ---------------- */
+async function importRecipes(file) {
+  let incoming;
+  try {
+    const d = JSON.parse(await file.text());
+    incoming = Array.isArray(d) ? d : d.recipes;
+  } catch { return toast('That file is not valid recipe JSON.'); }
+  if (!Array.isArray(incoming) || !incoming.length) return toast('No recipes found in that file.');
+  const key = r => `${String(r.category || '').toLowerCase()}|${String(r.title || '').toLowerCase()}`;
+  const toLines = v => (Array.isArray(v) ? v : lines(v)).map(String);
+  let added = 0, skipped = 0;
+  const now = new Date().toISOString();
+  toast(`Importing ${incoming.length} recipes…`);
+  try {
+    await mutate(list => {
+      const have = new Set(list.map(key));
+      for (const r of incoming) {
+        if (!r || !r.title || have.has(key(r))) { skipped++; continue; }
+        list.push({
+          id: uid(), title: String(r.title), category: String(r.category || ''),
+          ingredients: toLines(r.ingredients), steps: toLines(r.steps), notes: String(r.notes || ''),
+          imageId: null, createdBy: state.user.email, createdAt: now, updatedAt: now,
+        });
+        have.add(key(r));
+        added++;
+      }
+    });
+    toast(`Imported ${added} recipes${skipped ? `, skipped ${skipped} already in your book` : ''}.`);
+    location.hash = '#/';
+    route();
+  } catch (e) { toast(e.message); }
+}
+
 /* ---------------- boot ---------------- */
+document.getElementById('importFile').onchange = e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (f) importRecipes(f);
+};
 document.getElementById('pdfBtn').onclick = downloadPdf;
 document.getElementById('signOutBtn').onclick = () => signOut();
 initAuth();

@@ -49,6 +49,7 @@ nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn.danger { color: #c0392b; }
 .btn:disabled { opacity: .6; cursor: wait; }
+label.btn { display: inline-block; margin: 0; font-weight: 400; }
 
 main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
 
