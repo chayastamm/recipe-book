@@ -1,0 +1,102 @@
+:root {
+  --bg: #faf7f2;
+  --card: #ffffff;
+  --text: #2b2520;
+  --muted: #7a6f66;
+  --line: #e7dfd5;
+  --accent: #b5532c;
+  --accent-ink: #ffffff;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1815;
+    --card: #25211d;
+    --text: #efe8e0;
+    --muted: #a99d91;
+    --line: #3a332c;
+    --accent: #e07a4f;
+    --accent-ink: #1b1815;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.center { text-align: center; }
+
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line);
+  background: var(--card); position: sticky; top: 0; z-index: 5;
+}
+.brand { font: 700 1.3rem Georgia, serif; color: var(--text); text-decoration: none; }
+nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.user { color: var(--muted); font-size: .9rem; }
+
+.btn {
+  display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); font: inherit; font-size: .95rem;
+  cursor: pointer; text-decoration: none;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.danger { color: #c0392b; }
+.btn:disabled { opacity: .6; cursor: wait; }
+
+main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+
+.login { max-width: 420px; margin: 10vh auto; text-align: center; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 32px 24px; }
+.login h1 { font-family: Georgia, serif; margin-top: 0; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.toolbar input, .toolbar select { flex: 1 1 200px; }
+input, select, textarea {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--text); font: inherit;
+}
+textarea { min-height: 140px; resize: vertical; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; text-decoration: none; color: var(--text); display: flex; flex-direction: column;
+}
+.card:hover { border-color: var(--accent); }
+.card .thumb { aspect-ratio: 4/3; background: var(--line); object-fit: cover; width: 100%; display: block; }
+.card .thumb.placeholder { display: grid; place-items: center; font-size: 2.4rem; }
+.card .body { padding: 10px 12px; }
+.card h3 { margin: 0 0 2px; font-size: 1.05rem; }
+.tag { font-size: .8rem; color: var(--muted); }
+
+.recipe { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+.recipe h1 { font-family: Georgia, serif; margin: 0 0 4px; }
+.recipe .hero { width: 100%; max-height: 420px; object-fit: cover; border-radius: 8px; margin: 12px 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); margin: 8px 0 16px; }
+.cols { display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px; }
+@media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+.recipe ol, .recipe ul { padding-left: 1.3em; }
+.recipe li { margin-bottom: 6px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+
+form.recipe-form { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+form.recipe-form h1 { margin-top: 0; font-family: Georgia, serif; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+label { display: block; margin-bottom: 14px; font-weight: 600; font-size: .92rem; }
+label input, label select, label textarea { margin-top: 4px; font-weight: 400; }
+.hint { font-weight: 400; color: var(--muted); font-size: .85rem; }
+.preview-img { max-width: 220px; border-radius: 8px; display: block; margin-top: 8px; }
+
+.empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px;
+  max-width: calc(100% - 32px); z-index: 10;
+}

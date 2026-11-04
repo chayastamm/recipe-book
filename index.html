@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipe Book</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="#/" class="brand">Recipe Book</a>
+    <nav id="nav" hidden>
+      <a href="#/new" class="btn primary">+ Add recipe</a>
+      <button id="pdfBtn" class="btn" type="button">Download PDF</button>
+      <span id="userName" class="user"></span>
+      <button id="signOutBtn" class="btn ghost" type="button">Sign out</button>
+    </nav>
+  </header>
+  <main id="app"><p class="muted center">Loading…</p></main>
+  <div id="toast" class="toast" hidden></div>
+</body>
+</html>
