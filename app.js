@@ -312,13 +312,8 @@ function renderForm(id) {
     <form class="recipe-form" id="form">
       <h1>${r ? 'Edit recipe' : 'Add a recipe'}</h1>
       <label>Title <input name="title" required maxlength="120" value="${esc(v.title)}"></label>
-      <div class="row">
-        <label>Category <input name="category" list="cats" value="${esc(v.category)}">
-          <datalist id="cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
-        <label>Servings <input name="servings" value="${esc(v.servings)}" placeholder="4"></label>
-        <label>Prep time <input name="prepTime" value="${esc(v.prepTime)}" placeholder="15 min"></label>
-        <label>Cook time <input name="cookTime" value="${esc(v.cookTime)}" placeholder="30 min"></label>
-      </div>
+      <label>Category <input name="category" list="cats" value="${esc(v.category)}">
+        <datalist id="cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
       <label>Ingredients <span class="hint">one per line</span>
         <textarea name="ingredients" required>${esc((v.ingredients || []).join('\n'))}</textarea></label>
       <label>Instructions <span class="hint">one step per line</span>
@@ -362,9 +357,6 @@ function renderForm(id) {
         id: v.id || uid(),
         title: fd.get('title').trim(),
         category: fd.get('category').trim(),
-        servings: fd.get('servings').trim(),
-        prepTime: fd.get('prepTime').trim(),
-        cookTime: fd.get('cookTime').trim(),
         ingredients: lines(fd.get('ingredients')),
         steps: lines(fd.get('steps')),
         notes: fd.get('notes').trim(),
