@@ -50,6 +50,20 @@ Use the cookbook's section headings as the category. Keep quantities and wording
       <li>Spot-check a few recipes after importing and fix anything with <b>Edit</b>.</li>
     </ul>
   </dialog>
+  <dialog id="pdfDialog" class="help pdf-options" aria-labelledby="pdfTitle">
+    <form>
+      <div class="help-head">
+        <h2 id="pdfTitle">Download PDF</h2>
+        <button class="btn ghost" type="button" data-close aria-label="Close">✕</button>
+      </div>
+      <fieldset>
+        <legend>Recipes per page</legend>
+        <label class="choice"><input type="radio" name="perPage" value="1" checked> 1 per page <span class="hint">larger text and photos</span></label>
+        <label class="choice"><input type="radio" name="perPage" value="2"> 2 per page <span class="hint">fewer pages to print</span></label>
+      </fieldset>
+      <div class="actions"><button class="btn primary" type="submit">Download</button></div>
+    </form>
+  </dialog>
   <div id="toast" class="toast" hidden></div>
 </body>
 </html>
