@@ -229,6 +229,11 @@ window.addEventListener('hashchange', route);
 
 const listFilter = { q: '', cat: '' };
 
+function overflowBadge(r) {
+  const tip = `Too long for half a page. In a 2-per-page PDF, this recipe gets a page of its own.${r.imageId ? ' (Measured with the photo at its largest size, so it may still fit.)' : ''}`;
+  return `<span class="overflow-warn" role="img" aria-label="${esc(tip)}" data-tip="${esc(tip)}">⚠</span>`;
+}
+
 function renderList() {
   const cats = [...new Set(state.recipes.map(r => r.category).filter(Boolean))].sort();
   $app.innerHTML = `
@@ -257,6 +262,7 @@ function renderList() {
           <p>${esc((r.steps || []).join(' '))}</p>
         </div>`}
         <div class="body"><h3>${esc(r.title)}</h3><div class="tag">${esc(r.category || '')}</div></div>
+        ${halfPageShare(r) > 1 ? overflowBadge(r) : ''}
       </a>`).join('')}</div>` : '<p class="empty">No matching recipes.</p>';
     hydrateImages();
   };
@@ -404,6 +410,126 @@ async function imageForPdf(id) {
   return { data: c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height };
 }
 
+const PDF = { M: 56, ACCENT: [181, 83, 44] };
+// In 2-per-page mode the bottom recipe starts at mid + 18, so that's the smaller half.
+const HALF = { mid: H => H / 2, room: H => H - PDF.M - (H / 2 + 18) };
+
+/**
+ * Lays out one recipe starting at pen.y and leaves pen.y where it ends.
+ * With pen.draw false nothing is drawn and pages never break, so the change
+ * in pen.y is the recipe's full height. A photo that hasn't been loaded (im
+ * null) is measured at its largest size.
+ */
+function layoutRecipe(doc, pen, r, cat, perPage, im) {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const { M, ACCENT } = PDF;
+  const CW = W - 2 * M;
+  const D = pen.draw;
+  const compact = perPage === 2;
+  const BODY = compact ? 9.5 : 11;
+  const need = h => { if (D && pen.y + h > H - M) { doc.addPage(); pen.y = M; } };
+  const text = (...a) => { if (D) doc.text(...a); };
+  const para = (t, size, opts = {}) => {
+    doc.setFontSize(size);
+    const indent = opts.indent || 0;
+    const wrapped = doc.splitTextToSize(pdfText(t), CW - indent);
+    const lh = size * 1.35;
+    wrapped.forEach((ln, i) => {
+      need(lh);
+      if (i === 0 && opts.marker) opts.marker(pen.y);
+      text(ln, M + indent, pen.y + size);
+      pen.y += lh;
+    });
+  };
+
+  doc.setFont('helvetica', 'normal').setTextColor(...ACCENT);
+  para(cat.toUpperCase(), 9);
+  doc.setFont('times', 'bold').setTextColor(30);
+  para(r.title, compact ? 18 : 26);
+  const meta = [r.servings && `Serves ${r.servings}`, r.prepTime && `Prep ${r.prepTime}`, r.cookTime && `Cook ${r.cookTime}`]
+    .filter(Boolean).join('   |   ');
+  if (meta) { doc.setFont('helvetica', 'normal').setTextColor(110); para(meta, 10); }
+  pen.y += compact ? 4 : 8;
+  if (D) doc.setDrawColor(...ACCENT).setLineWidth(1).line(M, pen.y, W - M, pen.y);
+  pen.y += compact ? 8 : 14;
+
+  const maxH = compact ? 120 : 250;
+  if (im) {
+    let w = CW, h = (im.h / im.w) * CW;
+    if (h > maxH) { h = maxH; w = (im.w / im.h) * maxH; }
+    need(h + 12);
+    if (D) doc.addImage(im.data, 'JPEG', M + (CW - w) / 2, pen.y, w, h);
+    pen.y += h + 16;
+  } else if (r.imageId && !D) {
+    pen.y += maxH + 16;
+  }
+
+  // 2 per page uses smaller type and puts ingredients in two columns.
+  const heading = t => {
+    pen.y += compact ? 3 : 6;
+    need(compact ? 30 : 40);
+    doc.setFont('times', 'bold').setTextColor(...ACCENT);
+    para(t, compact ? 12 : 15);
+    pen.y += compact ? 2 : 4;
+    doc.setFont('helvetica', 'normal').setTextColor(40);
+  };
+  const bullet = (x, yy) => { if (D) { doc.setFillColor(...ACCENT); doc.circle(x + 4, yy + BODY * 0.64, 1.6, 'F'); } };
+
+  heading('Ingredients');
+  const ingr = r.ingredients || [];
+  if (compact) {
+    const GAP = 18, colW = (CW - GAP) / 2, lh = BODY * 1.35;
+    const half = Math.ceil(ingr.length / 2);
+    doc.setFontSize(BODY);
+    for (let row = 0; row < half; row++) {
+      const cells = [ingr[row], ingr[row + half]].map(t => t == null ? [] : doc.splitTextToSize(pdfText(t), colW - 12));
+      const rowH = Math.max(...cells.map(c => c.length)) * lh;
+      need(rowH);
+      cells.forEach((wrapped, c) => {
+        if (!wrapped.length) return;
+        const x = M + c * (colW + GAP);
+        bullet(x, pen.y);
+        wrapped.forEach((ln, k) => text(ln, x + 12, pen.y + BODY + k * lh));
+      });
+      pen.y += rowH;
+    }
+  } else {
+    ingr.forEach(i => para(i, BODY, { indent: 14, marker: yy => bullet(M, yy) }));
+  }
+  heading('Instructions');
+  (r.steps || []).forEach((s, n) => {
+    para(s, BODY, { indent: 20, marker: yy => { doc.setFont('helvetica', 'bold'); text(`${n + 1}.`, M, yy + BODY); doc.setFont('helvetica', 'normal'); } });
+    pen.y += compact ? 2 : 4;
+  });
+  if (r.notes) {
+    heading('Notes');
+    doc.setFont('helvetica', 'italic');
+    para(r.notes, BODY);
+  }
+}
+
+/** Height in points the recipe needs, measured with the same layout the PDF uses. */
+let measureDoc = null;
+function recipeHeight(r, cat, perPage, im) {
+  measureDoc ||= new window.jspdf.jsPDF({ unit: 'pt', format: 'letter' });
+  const pen = { y: 0, draw: false };
+  layoutRecipe(measureDoc, pen, r, cat, perPage, im);
+  return pen.y;
+}
+
+/** How much of a half page the recipe needs in 2-per-page mode (1 = exactly fits). Cached per edit. */
+const halfPageCache = new Map();
+function halfPageShare(r) {
+  if (!window.jspdf) return 0;
+  const key = `${r.id}|${r.updatedAt || ''}|${r.imageId || ''}`;
+  if (!halfPageCache.has(key)) {
+    const H = 792; // US Letter height in points, as used by the PDF
+    halfPageCache.set(key, recipeHeight(r, r.category || 'Other', 2, null) / HALF.room(H));
+  }
+  return halfPageCache.get(key);
+}
+
 async function downloadPdf(perPage = 1) {
   if (!state.recipes.length) return toast('Add some recipes first.');
   const btn = document.getElementById('pdfBtn');
@@ -414,9 +540,8 @@ async function downloadPdf(perPage = 1) {
     const doc = new jsPDF({ unit: 'pt', format: 'letter' });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    const M = 56;
+    const { M, ACCENT } = PDF;
     const CW = W - 2 * M;
-    const ACCENT = [181, 83, 44];
 
     // Group by category, then title.
     const groups = new Map();
@@ -443,114 +568,39 @@ async function downloadPdf(perPage = 1) {
     const tocPages = 1 + Math.max(0, Math.ceil((tocLines - firstTocCap) / tocCap));
     for (let i = 0; i < tocPages; i++) doc.addPage();
 
-    // Recipes
+    // Recipes. Two per page: a recipe starts at the top of a page, or at the
+    // halfway line when the previous recipe finished in the top half.
     const pageOf = new Map();
-    let y = M;
-    const need = h => { if (y + h > H - M) { doc.addPage(); y = M; } };
-    const para = (text, size, opts = {}) => {
-      doc.setFontSize(size);
-      const indent = opts.indent || 0;
-      const wrapped = doc.splitTextToSize(pdfText(text), CW - indent);
-      const lh = size * 1.35;
-      wrapped.forEach((ln, i) => {
-        need(lh);
-        if (i === 0 && opts.marker) opts.marker(y);
-        doc.text(ln, M + indent, y + size);
-        y += lh;
-      });
-    };
-
-    // Two per page: a recipe starts at the top of a page, or at the halfway line
-    // when the previous recipe finished in the top half.
-    const MID = H / 2;
-    let anyRecipe = false;
+    // A recipe too long for half a page gets a page to itself (or more), and the
+    // recipe after it starts on a new page.
+    const pen = { y: M, draw: true };
+    let anyRecipe = false, prevTall = false;
     for (const cat of cats) {
       for (const r of groups.get(cat)) {
-        if (perPage === 2 && anyRecipe && y <= MID - 12) {
-          doc.setDrawColor(200).setLineWidth(0.5).setLineDashPattern([3, 3], 0).line(M, MID, W - M, MID);
+        let im = null;
+        if (r.imageId) {
+          try { im = await imageForPdf(r.imageId); } catch (e) { console.warn('Skipping image', e); }
+        }
+        const tall = perPage === 2 && recipeHeight(r, cat, 2, im) > HALF.room(H);
+        if (perPage === 2 && anyRecipe && !tall && !prevTall && pen.y <= HALF.mid(H) - 12) {
+          doc.setDrawColor(200).setLineWidth(0.5).setLineDashPattern([3, 3], 0).line(M, HALF.mid(H), W - M, HALF.mid(H));
           doc.setLineDashPattern([], 0);
-          y = MID + 18;
+          pen.y = HALF.mid(H) + 18;
         } else {
           doc.addPage();
-          y = M;
+          pen.y = M;
         }
         anyRecipe = true;
+        prevTall = tall;
         pageOf.set(r.id, doc.getNumberOfPages());
-
-        doc.setFont('helvetica', 'normal').setTextColor(...ACCENT);
-        para(cat.toUpperCase(), 9);
-        doc.setFont('times', 'bold').setTextColor(30);
-        para(r.title, perPage === 2 ? 18 : 26);
-        const meta = [r.servings && `Serves ${r.servings}`, r.prepTime && `Prep ${r.prepTime}`, r.cookTime && `Cook ${r.cookTime}`]
-          .filter(Boolean).join('   |   ');
-        if (meta) { doc.setFont('helvetica', 'normal').setTextColor(110); para(meta, 10); }
-        y += perPage === 2 ? 4 : 8;
-        doc.setDrawColor(...ACCENT).setLineWidth(1).line(M, y, W - M, y);
-        y += perPage === 2 ? 8 : 14;
-
-        if (r.imageId) {
-          try {
-            const im = await imageForPdf(r.imageId);
-            const maxH = perPage === 2 ? 120 : 250;
-            let w = CW, h = (im.h / im.w) * CW;
-            if (h > maxH) { h = maxH; w = (im.w / im.h) * maxH; }
-            need(h + 12);
-            doc.addImage(im.data, 'JPEG', M + (CW - w) / 2, y, w, h);
-            y += h + 16;
-          } catch (e) { console.warn('Skipping image', e); }
-        }
-
-        // 2 per page uses smaller type and puts ingredients in two columns.
-        const compact = perPage === 2;
-        const BODY = compact ? 9.5 : 11;
-        const heading = t => {
-          y += compact ? 3 : 6;
-          need(compact ? 30 : 40);
-          doc.setFont('times', 'bold').setTextColor(...ACCENT);
-          para(t, compact ? 12 : 15);
-          y += compact ? 2 : 4;
-          doc.setFont('helvetica', 'normal').setTextColor(40);
-        };
-        const bullet = (x, yy) => { doc.setFillColor(...ACCENT); doc.circle(x + 4, yy + BODY * 0.64, 1.6, 'F'); };
-
-        heading('Ingredients');
-        const ingr = r.ingredients || [];
-        if (compact) {
-          const GAP = 18, colW = (CW - GAP) / 2, lh = BODY * 1.35;
-          const half = Math.ceil(ingr.length / 2);
-          doc.setFontSize(BODY);
-          for (let row = 0; row < half; row++) {
-            const cells = [ingr[row], ingr[row + half]].map(t => t == null ? [] : doc.splitTextToSize(pdfText(t), colW - 12));
-            const rowH = Math.max(...cells.map(c => c.length)) * lh;
-            need(rowH);
-            cells.forEach((wrapped, c) => {
-              if (!wrapped.length) return;
-              const x = M + c * (colW + GAP);
-              bullet(x, y);
-              wrapped.forEach((ln, k) => doc.text(ln, x + 12, y + BODY + k * lh));
-            });
-            y += rowH;
-          }
-        } else {
-          ingr.forEach(i => para(i, BODY, { indent: 14, marker: yy => bullet(M, yy) }));
-        }
-        heading('Instructions');
-        (r.steps || []).forEach((s, n) => {
-          para(s, BODY, { indent: 20, marker: yy => { doc.setFont('helvetica', 'bold'); doc.text(`${n + 1}.`, M, yy + BODY); doc.setFont('helvetica', 'normal'); } });
-          y += compact ? 2 : 4;
-        });
-        if (r.notes) {
-          heading('Notes');
-          doc.setFont('helvetica', 'italic');
-          para(r.notes, BODY);
-        }
+        layoutRecipe(doc, pen, r, cat, perPage, im);
       }
     }
 
     // Fill table of contents
     let tocPage = 2;
     doc.setPage(tocPage);
-    y = M;
+    let y = M;
     doc.setFont('times', 'bold').setFontSize(28).setTextColor(30);
     doc.text('Contents', M, y + 24);
     y += 50;
