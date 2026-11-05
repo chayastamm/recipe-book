@@ -72,7 +72,20 @@ textarea { min-height: 140px; resize: vertical; }
 }
 .card:hover { border-color: var(--accent); }
 .card .thumb { aspect-ratio: 4/3; background: var(--line); object-fit: cover; width: 100%; display: block; }
-.card .thumb.placeholder { display: grid; place-items: center; font-size: 2.4rem; }
+.card .thumb.text-thumb {
+  overflow: hidden; padding: 10px 12px; background: var(--bg); border-bottom: 1px solid var(--line);
+  font-size: .75rem; line-height: 1.4; color: var(--muted);
+  -webkit-mask-image: linear-gradient(#000 65%, transparent);
+  mask-image: linear-gradient(#000 65%, transparent);
+}
+.text-thumb ul { margin: 0 0 6px; padding-left: 1.1em; }
+.text-thumb p { margin: 0; }
+
+.pdf-options { width: min(420px, calc(100% - 32px)); }
+.pdf-options fieldset { border: 0; padding: 0; margin: 16px 0 0; }
+.pdf-options legend { font-weight: 600; margin-bottom: 8px; }
+label.choice { display: flex; align-items: baseline; gap: 8px; font-weight: 400; margin-bottom: 10px; cursor: pointer; }
+label.choice input { width: auto; margin: 0; }
 .card .body { padding: 10px 12px; }
 .card h3 { margin: 0 0 2px; font-size: 1.05rem; }
 .tag { font-size: .8rem; color: var(--muted); }
