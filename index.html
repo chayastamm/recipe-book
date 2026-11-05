@@ -18,11 +18,38 @@
       <button id="pdfBtn" class="btn" type="button">Download PDF</button>
       <label class="btn" for="importFile">Import</label>
       <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <button id="helpBtn" class="btn" type="button" aria-haspopup="dialog">Help</button>
       <span id="userName" class="user"></span>
       <button id="signOutBtn" class="btn ghost" type="button">Sign out</button>
     </nav>
   </header>
   <main id="app"><p class="muted center">Loading…</p></main>
+  <dialog id="helpDialog" class="help" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">Importing recipes from a PDF</h2>
+      <button class="btn ghost" type="button" data-close aria-label="Close">✕</button>
+    </div>
+    <p>The <b>Import</b> button reads a <code>.json</code> file. The easiest way to turn a PDF cookbook into one is with an AI assistant.</p>
+    <ol>
+      <li>Open an AI assistant that accepts file uploads, such as <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a>.</li>
+      <li>Attach your PDF, then paste this prompt and send it:
+        <pre id="helpPrompt">Extract every recipe from the attached PDF into JSON. Reply with only the JSON, no other text, in exactly this format:
+
+{"recipes":[{"title":"...","category":"...","ingredients":["one ingredient per item"],"steps":["one step per item"],"notes":"tips, serving notes, and the source if one is given"}]}
+
+Use the cookbook's section headings as the category. Keep quantities and wording exactly as written. Don't add anything that isn't in the PDF.</pre>
+        <button class="btn" type="button" id="copyPrompt">Copy prompt</button>
+      </li>
+      <li>Copy the JSON from the reply. Open Notepad, paste it, and choose <b>File → Save as</b>. Set <b>Save as type</b> to <b>All files</b>, <b>Encoding</b> to <b>UTF-8</b>, and name it something like <code>my-recipes.json</code>.</li>
+      <li>Click <b>Import</b> and choose the file.</li>
+    </ol>
+    <h3>Tips</h3>
+    <ul>
+      <li>For a big cookbook, ask for a few pages at a time (for example, "pages 1–30 only") and import each file. Recipes already in your book are skipped, so nothing gets duplicated.</li>
+      <li>Photos in the PDF aren't imported. Add them afterwards with <b>Edit</b>.</li>
+      <li>Spot-check a few recipes after importing and fix anything with <b>Edit</b>.</li>
+    </ul>
+  </dialog>
   <div id="toast" class="toast" hidden></div>
 </body>
 </html>
