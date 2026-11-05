@@ -606,6 +606,18 @@ document.getElementById('importFile').onchange = e => {
   e.target.value = '';
   if (f) importRecipes(f);
 };
+const helpDialog = document.getElementById('helpDialog');
+document.getElementById('helpBtn').onclick = () => helpDialog.showModal();
+helpDialog.querySelector('[data-close]').onclick = () => helpDialog.close();
+helpDialog.onclick = e => { if (e.target === helpDialog) helpDialog.close(); };
+document.getElementById('copyPrompt').onclick = async e => {
+  const btn = e.currentTarget;
+  try {
+    await navigator.clipboard.writeText(document.getElementById('helpPrompt').textContent);
+    btn.textContent = 'Copied!';
+  } catch { btn.textContent = 'Copy failed, select the text instead'; }
+  setTimeout(() => (btn.textContent = 'Copy prompt'), 2500);
+};
 document.getElementById('pdfBtn').onclick = downloadPdf;
 document.getElementById('signOutBtn').onclick = () => signOut();
 initAuth();
