@@ -78,6 +78,25 @@ textarea { min-height: 140px; resize: vertical; }
   -webkit-mask-image: linear-gradient(#000 65%, transparent);
   mask-image: linear-gradient(#000 65%, transparent);
 }
+.card { position: relative; overflow: visible; }
+.card:hover, .card:focus-visible { z-index: 3; }
+.card > .thumb { border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; }
+.overflow-warn {
+  position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font-size: .9rem; line-height: 1;
+  background: #fff4d6; color: #8a5a00; border: 1px solid #e9c46a; cursor: help;
+}
+.overflow-warn::after {
+  content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: -8px; width: 230px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .2);
+  padding: 8px 10px; border-radius: 8px; background: var(--text); color: var(--bg);
+  font-size: .78rem; line-height: 1.35; text-align: left; white-space: normal;
+  opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none; z-index: 2;
+}
+.overflow-warn:hover::after, .card:focus-visible .overflow-warn::after { opacity: 1; visibility: visible; }
+@media (prefers-color-scheme: dark) {
+  .overflow-warn { background: #4a3a12; color: #ffd98a; border-color: #8a6a1f; }
+}
 .text-thumb ul { margin: 0 0 6px; padding-left: 1.1em; }
 .text-thumb p { margin: 0; }
 
