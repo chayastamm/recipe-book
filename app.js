@@ -252,7 +252,10 @@ function renderList() {
     }
     el.innerHTML = items.length ? `<div class="grid">${items.map(r => `
       <a class="card" href="#/r/${esc(r.id)}">
-        ${r.imageId ? `<img class="thumb" data-img="${esc(r.imageId)}" alt="">` : `<div class="thumb placeholder">🍽️</div>`}
+        ${r.imageId ? `<img class="thumb" data-img="${esc(r.imageId)}" alt="">` : `<div class="thumb text-thumb" aria-hidden="true">
+          <ul>${(r.ingredients || []).slice(0, 8).map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+          <p>${esc((r.steps || []).join(' '))}</p>
+        </div>`}
         <div class="body"><h3>${esc(r.title)}</h3><div class="tag">${esc(r.category || '')}</div></div>
       </a>`).join('')}</div>` : '<p class="empty">No matching recipes.</p>';
     hydrateImages();
@@ -401,7 +404,7 @@ async function imageForPdf(id) {
   return { data: c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height };
 }
 
-async function downloadPdf() {
+async function downloadPdf(perPage = 1) {
   if (!state.recipes.length) return toast('Add some recipes first.');
   const btn = document.getElementById('pdfBtn');
   btn.disabled = true;
@@ -457,27 +460,38 @@ async function downloadPdf() {
       });
     };
 
+    // Two per page: a recipe starts at the top of a page, or at the halfway line
+    // when the previous recipe finished in the top half.
+    const MID = H / 2;
+    let anyRecipe = false;
     for (const cat of cats) {
       for (const r of groups.get(cat)) {
-        doc.addPage();
-        y = M;
+        if (perPage === 2 && anyRecipe && y <= MID - 12) {
+          doc.setDrawColor(200).setLineWidth(0.5).setLineDashPattern([3, 3], 0).line(M, MID, W - M, MID);
+          doc.setLineDashPattern([], 0);
+          y = MID + 18;
+        } else {
+          doc.addPage();
+          y = M;
+        }
+        anyRecipe = true;
         pageOf.set(r.id, doc.getNumberOfPages());
 
         doc.setFont('helvetica', 'normal').setTextColor(...ACCENT);
         para(cat.toUpperCase(), 9);
         doc.setFont('times', 'bold').setTextColor(30);
-        para(r.title, 26);
+        para(r.title, perPage === 2 ? 18 : 26);
         const meta = [r.servings && `Serves ${r.servings}`, r.prepTime && `Prep ${r.prepTime}`, r.cookTime && `Cook ${r.cookTime}`]
           .filter(Boolean).join('   |   ');
         if (meta) { doc.setFont('helvetica', 'normal').setTextColor(110); para(meta, 10); }
-        y += 8;
+        y += perPage === 2 ? 4 : 8;
         doc.setDrawColor(...ACCENT).setLineWidth(1).line(M, y, W - M, y);
-        y += 14;
+        y += perPage === 2 ? 8 : 14;
 
         if (r.imageId) {
           try {
             const im = await imageForPdf(r.imageId);
-            const maxH = 250;
+            const maxH = perPage === 2 ? 120 : 250;
             let w = CW, h = (im.h / im.w) * CW;
             if (h > maxH) { h = maxH; w = (im.w / im.h) * maxH; }
             need(h + 12);
@@ -486,28 +500,49 @@ async function downloadPdf() {
           } catch (e) { console.warn('Skipping image', e); }
         }
 
+        // 2 per page uses smaller type and puts ingredients in two columns.
+        const compact = perPage === 2;
+        const BODY = compact ? 9.5 : 11;
         const heading = t => {
-          y += 6;
-          need(40);
+          y += compact ? 3 : 6;
+          need(compact ? 30 : 40);
           doc.setFont('times', 'bold').setTextColor(...ACCENT);
-          para(t, 15);
-          y += 4;
+          para(t, compact ? 12 : 15);
+          y += compact ? 2 : 4;
           doc.setFont('helvetica', 'normal').setTextColor(40);
         };
+        const bullet = (x, yy) => { doc.setFillColor(...ACCENT); doc.circle(x + 4, yy + BODY * 0.64, 1.6, 'F'); };
 
         heading('Ingredients');
-        (r.ingredients || []).forEach(i => para(i, 11, {
-          indent: 14, marker: yy => { doc.setFillColor(...ACCENT); doc.circle(M + 4, yy + 7, 1.8, 'F'); },
-        }));
+        const ingr = r.ingredients || [];
+        if (compact) {
+          const GAP = 18, colW = (CW - GAP) / 2, lh = BODY * 1.35;
+          const half = Math.ceil(ingr.length / 2);
+          doc.setFontSize(BODY);
+          for (let row = 0; row < half; row++) {
+            const cells = [ingr[row], ingr[row + half]].map(t => t == null ? [] : doc.splitTextToSize(pdfText(t), colW - 12));
+            const rowH = Math.max(...cells.map(c => c.length)) * lh;
+            need(rowH);
+            cells.forEach((wrapped, c) => {
+              if (!wrapped.length) return;
+              const x = M + c * (colW + GAP);
+              bullet(x, y);
+              wrapped.forEach((ln, k) => doc.text(ln, x + 12, y + BODY + k * lh));
+            });
+            y += rowH;
+          }
+        } else {
+          ingr.forEach(i => para(i, BODY, { indent: 14, marker: yy => bullet(M, yy) }));
+        }
         heading('Instructions');
         (r.steps || []).forEach((s, n) => {
-          para(s, 11, { indent: 22, marker: yy => { doc.setFont('helvetica', 'bold'); doc.text(`${n + 1}.`, M, yy + 11); doc.setFont('helvetica', 'normal'); } });
-          y += 4;
+          para(s, BODY, { indent: 20, marker: yy => { doc.setFont('helvetica', 'bold'); doc.text(`${n + 1}.`, M, yy + BODY); doc.setFont('helvetica', 'normal'); } });
+          y += compact ? 2 : 4;
         });
         if (r.notes) {
           heading('Notes');
           doc.setFont('helvetica', 'italic');
-          para(r.notes, 11);
+          para(r.notes, BODY);
         }
       }
     }
@@ -618,6 +653,18 @@ document.getElementById('copyPrompt').onclick = async e => {
   } catch { btn.textContent = 'Copy failed, select the text instead'; }
   setTimeout(() => (btn.textContent = 'Copy prompt'), 2500);
 };
-document.getElementById('pdfBtn').onclick = downloadPdf;
+const pdfDialog = document.getElementById('pdfDialog');
+document.getElementById('pdfBtn').onclick = () => {
+  if (!state.recipes.length) return toast('Add some recipes first.');
+  pdfDialog.showModal();
+};
+pdfDialog.querySelector('[data-close]').onclick = () => pdfDialog.close();
+pdfDialog.onclick = e => { if (e.target === pdfDialog) pdfDialog.close(); };
+pdfDialog.querySelector('form').onsubmit = e => {
+  e.preventDefault();
+  const perPage = Number(new FormData(e.target).get('perPage')) === 2 ? 2 : 1;
+  pdfDialog.close();
+  downloadPdf(perPage);
+};
 document.getElementById('signOutBtn').onclick = () => signOut();
 initAuth();
