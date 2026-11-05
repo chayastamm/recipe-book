@@ -122,6 +122,9 @@ label input, label select, label textarea { margin-top: 4px; font-weight: 400; }
   border-radius: 8px; padding: 10px 12px; font-size: .85rem; margin: 8px 0;
 }
 
+.site-footer { text-align: center; padding: 0 16px 32px; font-size: .85rem; }
+.site-footer a { color: var(--muted); }
+
 .empty { text-align: center; padding: 48px 16px; color: var(--muted); }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
