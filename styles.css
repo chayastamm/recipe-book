@@ -95,6 +95,20 @@ label input, label select, label textarea { margin-top: 4px; font-weight: 400; }
 .hint { font-weight: 400; color: var(--muted); font-size: .85rem; }
 .preview-img { max-width: 220px; border-radius: 8px; display: block; margin-top: 8px; }
 
+.help {
+  width: min(640px, calc(100% - 32px)); max-height: calc(100vh - 48px); overflow: auto;
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px;
+  background: var(--card); color: var(--text);
+}
+.help::backdrop { background: rgba(0, 0, 0, .45); }
+.help-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.help h2 { margin: 0; font-family: Georgia, serif; }
+.help li { margin-bottom: 10px; }
+.help pre {
+  white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; font-size: .85rem; margin: 8px 0;
+}
+
 .empty { text-align: center; padding: 48px 16px; color: var(--muted); }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
